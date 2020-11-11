@@ -4,6 +4,8 @@ services:
     image: ${IBM_FHIR_IMAGE}
     ports:
       - ${IBM_FHIR_HTTPS_PORT}:${IBM_FHIR_HTTPS_PORT}
+    volumes:
+      - "./support/ibmFhirKeyStore.p12:/opt/ol/wlp/usr/servers/fhir-server/resources/security/fhirKeyStore.p12"
   msft-fhir:
     restart: on-failure
     image: ${MSFT_FHIR_IMAGE}
@@ -28,3 +30,50 @@ services:
       interval: 10s
       timeout: 10s
       retries: 6
+  lfh:
+    image: ${LFH_CONNECT_IMAGE}
+    restart: "always"
+    environment:
+      JAVA_OPTS: "-Djavax.net.ssl.trustStore=/opt/lfh/lfhTrustStore.p12 -Djavax.net.ssl.trustStorePassword=change-password"
+      LFH_CONNECT_INSECURE_HTTP_CLIENT_ENABLED: "true"
+      LFH_CONNECT_DATASTORE_URI: "kafka:<topicName>?brokers=kafka:9092"
+      LFH_CONNECT_MESSAGING_URI: "nats:lfh-events?servers=nats-server:4222"
+      LFH_CONNECT_MESSAGING_SUBSCRIBE_HOSTS: "nats-server:4222"
+      LFH_CONNECT_ORTHANC_SERVER_URI: "http://orthanc:8042/instances"
+      LFH_CONNECT_DATASTORE_BROKERS: "kafka:9092"
+      LFH_CONNECT_EXTERNAL_HOST_IP: "127.0.0.1"
+      LFH_CONNECT_FHIR-R4_EXTERNALSERVERS: "${MSFT_FHIR_URL};${IBM_FHIR_URL}"
+    volumes:
+      - "./support/lfhIntegrationTrustStore.p12:/opt/lfh/lfhTrustStore.p12"
+    depends_on:
+      - "kafka"
+      - "nats-server"
+  postgres:
+    image: ${LFH_PG_IMAGE}
+    restart: "always"
+    environment:
+      PGDATA: ${LFH_PG_DATA}
+      POSTGRES_USER: ${LFH_PG_USER}
+      POSTGRES_PASSWORD: ${LFH_PG_PASSWORD}
+      POSTGRES_DB: ${LFH_KONG_DATABASE}
+    volumes:
+      - pg_data:${LFH_PG_DATA}
+  kong:
+    image: ${LFH_KONG_IMAGE}
+    restart: always
+    depends_on:
+      - postgres
+    ports:
+      - ${LFH_KONG_SSL_PORT}:${LFH_KONG_SSL_PORT}
+      - ${LFH_KONG_ADMIN_SSL_PORT}:${LFH_KONG_ADMIN_SSL_PORT}
+      - ${LFH_KONG_MLLP_PORT}:${LFH_KONG_MLLP_PORT}
+    environment:
+      KONG_DATABASE: ${LFH_KONG_DATABASE_TYPE}
+      KONG_PG_HOST: postgres
+      KONG_PG_USER: ${LFH_PG_USER}
+      KONG_PG_PASSWORD: ${LFH_PG_PASSWORD}
+      KONG_ADMIN_LISTEN: ${LFH_KONG_ADMIN_LISTEN}
+      KONG_STREAM_LISTEN: ${LFH_KONG_STREAM_LISTEN}
+      KONG_LOG_LEVEL: ${LFH_KONG_LOG_LEVEL}
+volumes:
+  pg_data: {}

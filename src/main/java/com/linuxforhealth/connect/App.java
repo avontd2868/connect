@@ -184,6 +184,7 @@ public final class App {
      * Configures the application prior to starting Camel services.
      * <ol>
      *     <li>Binds components to the Camel Registry</li>
+     *     <li>Binds an HttpClientConfigurer for outbound request processing customization</li>
      *     <li>Adds routes to the Camel Application</li>
      * </ol>
      * @throws ReflectiveOperationException if an error occurs creating Camel component instances

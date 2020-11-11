@@ -53,11 +53,6 @@ fi
 
 export COMPOSE_FILE=docker-compose.yml:"${OVERRIDE_FILE}"
 
-# integration includes external systems used as route producers
-if [[ "${LFH_COMPOSE_PROFILE}" == "integration" ]]; then
-  export COMPOSE_FILE="${COMPOSE_FILE}":docker-compose.server.yml
-fi
-
 echo "starting LFH compose ${LFH_COMPOSE_PROFILE}"
 docker-compose up -d --remove-orphans
 docker-compose ps
